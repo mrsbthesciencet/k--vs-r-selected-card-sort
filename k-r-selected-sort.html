@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>K-selected vs. r-selected Species Sort</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--tx:#1f2a24;--mut:#5b6760;--bd:#cfd6d0;--k:#2f6f4f;--kbg:#e4f1e9;--r:#b4570f;--rbg:#fbebdc;--ok:#1e7a3c;--bad:#b3261e;--sel:#2457c5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171b18;--card:#222823;--tx:#e8ede9;--mut:#9aa69e;--bd:#3a443d;--k:#7cc79d;--kbg:#1d2f25;--r:#f0a566;--rbg:#35261a;--ok:#6fd08c;--bad:#ff8a80;--sel:#8fb2ff}}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:0 0 4px}
+p.d{color:var(--mut);margin:0 0 12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+input[type=text],textarea{font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);width:100%}
+.row input{flex:1;min-width:160px}
+.zone{border:2px dashed var(--bd);border-radius:12px;padding:10px;min-height:90px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;background:var(--card)}
+.zone.over{border-color:var(--sel)}
+.bins{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+@media(max-width:600px){.bins{grid-template-columns:1fr}}
+.bin h2{margin:0 0 6px;font-size:1.05rem}
+.bin.K h2{color:var(--k)}.bin.K .zone{background:var(--kbg);border-color:var(--k)}
+.bin.r h2{color:var(--r)}.bin.r .zone{background:var(--rbg);border-color:var(--r)}
+.c{padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);cursor:pointer;font-size:.92rem;user-select:none;max-width:100%}
+.c.o{font-weight:600;border-style:double;border-width:3px}
+.c.sel{outline:3px solid var(--sel)}
+.c.ok{border-color:var(--ok);box-shadow:inset 4px 0 0 var(--ok)}
+.c.no{border-color:var(--bad);box-shadow:inset 4px 0 0 var(--bad)}
+button{font:inherit;padding:9px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}
+button.p{background:var(--sel);color:#fff;border-color:var(--sel)}
+#msg{font-weight:600;margin:8px 0}
+.leg{color:var(--mut);font-size:.88rem}
+label{font-weight:600;display:block;margin:14px 0 4px}
+#note{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:10px 0;display:none}
+</style></head><body><main>
+<h1>Traits of K-selected and r-selected Species</h1>
+<p class="d">Sort every card into the correct category. <b>Tap</b> a card, then tap a category (or drag it there). Bold double-bordered cards are example organisms.</p>
+<div class="row"><input type="text" id="nm" placeholder="Your name" aria-label="Your name"><input type="text" id="pd" placeholder="Class period" aria-label="Class period"></div>
+<div class="zone" id="pool" data-z="pool" aria-label="Unsorted cards"></div>
+<div class="bins">
+<div class="bin K"><h2>K-selected species</h2><div class="zone" id="K" data-z="K"></div></div>
+<div class="bin r"><h2>r-selected species</h2><div class="zone" id="r" data-z="r"></div></div>
+</div>
+<div class="row"><button class="p" id="chk">Check my answers</button><button id="rs">Reset</button></div>
+<div id="msg" aria-live="polite"></div>
+<div id="note"></div>
+<label for="just">Justify your placement of the example organisms (a few sentences). Which organisms were hard to place, and why?</label>
+<textarea id="just" rows="5" placeholder="Example: I placed ___ in ___ because…"></textarea>
+<div class="row" style="margin-top:12px"><button id="cp">Copy my results</button><span class="leg" id="cpm"></span></div>
+<textarea id="out" rows="6" readonly style="display:none"></textarea>
+</main>
+<script>
+var T=[["Long life span","Short life span"],["Many years to reach reproductive maturity","Short time to reach reproductive maturity"],["Few reproductive events","Many reproductive events"],["Few offspring","Many offspring"],["Size of offspring is large","Size of offspring is small"],["Substantial parental care is given","Little or no parental care is provided"],["Population growth rate is slow","Population growth rate is fast"],["Population regulation is determined by density-dependent factors","Population regulation is determined by density-independent factors"],["Population dynamic: stable, near carrying capacity","Population dynamic: highly variable"]];
+var O=[["Elephants","House mice"],["Primates","Mosquitoes"],["Redwood trees","Tuna"],["Bald eagles","Dandelions"],["White-tailed deer","Sea turtles"]];
+var HARD={"Redwood trees":"Redwood trees live very long but make thousands of seeds, so they show traits of both strategies.","Tuna":"Tuna live a long time but produce thousands of offspring, so they show traits of both strategies.","Sea turtles":"Sea turtles live long, but lay many eggs and give no parental care, so they lean r-selected."};
+var cards=[],place={},sel=null;
+T.forEach(function(p,i){cards.push({id:"tK"+i,t:p[0],c:"K",o:0});cards.push({id:"tr"+i,t:p[1],c:"r",o:0})});
+O.forEach(function(p,i){cards.push({id:"oK"+i,t:p[0],c:"K",o:1});cards.push({id:"or"+i,t:p[1],c:"r",o:1})});
+function shuf(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+var order=shuf(cards.slice()),checked={};
+function reset(){place={};checked={};sel=null;cards.forEach(function(c){place[c.id]="pool"});document.getElementById("msg").textContent="";document.getElementById("note").style.display="none";render()}
+function render(){["pool","K","r"].forEach(function(z){document.getElementById(z).innerHTML=""});
+order.forEach(function(c){var d=document.createElement("div");d.className="c"+(c.o?" o":"")+(sel===c.id?" sel":"")+(checked[c.id]?" "+checked[c.id]:"");d.textContent=c.t;d.draggable=true;d.id=c.id;
+d.onclick=function(e){e.stopPropagation();sel=(sel===c.id)?null:c.id;render()};
+d.ondragstart=function(e){e.dataTransfer.setData("text/plain",c.id)};
+document.getElementById(place[c.id]).appendChild(d)});}
+["pool","K","r"].forEach(function(z){var el=document.getElementById(z);
+el.onclick=function(){if(sel){place[sel]=z;delete checked[sel];sel=null;render()}};
+el.ondragover=function(e){e.preventDefault();el.classList.add("over")};
+el.ondragleave=function(){el.classList.remove("over")};
+el.ondrop=function(e){e.preventDefault();el.classList.remove("over");var id=e.dataTransfer.getData("text/plain");if(place[id]){place[id]=z;delete checked[id];sel=null;render()}}});
+document.getElementById("chk").onclick=function(){var ok=0,un=0,hard=[];checked={};
+cards.forEach(function(c){var p=place[c.id];if(p==="pool"){un++;return}if(p===c.c){ok++;checked[c.id]="ok"}else checked[c.id]="no";});
+cards.forEach(function(c){if(c.o&&HARD[c.t]&&place[c.t==="x"?"":c.id]!=="pool")hard.push(c.t)});
+var tot=cards.length,m=ok+" of "+tot+" correct.";if(un)m+=" "+un+" card"+(un>1?"s":"")+" still unsorted.";
+if(ok===tot)m="All "+tot+" correct. Now write your justification below.";else m+=" Cards marked red are in the wrong category. Move them and check again.";
+document.getElementById("msg").textContent=m;
+var n=document.getElementById("note");if(hard.length){n.style.display="block";n.innerHTML="<b>Think about it:</b> "+hard.map(function(h){return HARD[h]}).join(" ")+" Most species fall somewhere between the two strategies.";}else n.style.display="none";
+render()};
+document.getElementById("rs").onclick=function(){order=shuf(cards.slice());reset()};
+document.getElementById("cp").onclick=function(){var L=function(z){return cards.filter(function(c){return place[c.id]===z}).map(function(c){return c.t}).join("; ")};
+var ok=cards.filter(function(c){return place[c.id]===c.c}).length;
+var s="Name: "+document.getElementById("nm").value+"\nPeriod: "+document.getElementById("pd").value+"\nScore: "+ok+"/"+cards.length+"\n\nK-selected: "+L("K")+"\n\nr-selected: "+L("r")+"\n\nUnsorted: "+L("pool")+"\n\nJustification: "+document.getElementById("just").value;
+var o=document.getElementById("out");o.value=s;o.style.display="block";o.select();var m=document.getElementById("cpm");
+try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(function(){m.textContent="Copied. Paste it into your assignment."},function(){m.textContent="Select the text below and copy it."})}else{document.execCommand("copy");m.textContent="Copied. Paste it into your assignment."}}catch(e){m.textContent="Select the text below and copy it."}};
+reset();
+</script></body></html>
